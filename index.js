@@ -10,6 +10,7 @@ function move() {
 	console.log(search);
 	console.log(bestMove);
 }
+chess.move("e4");
 
 function minimax(position, depth, alpha, beta, maximizingPlayer) {
 	if (depth == 0 || chess.isGameOver()) return evaluate(position);
@@ -132,7 +133,7 @@ const kingVW = [
 
 const kingVB = reverseArray(kingVW);
 
-const piece_values = { p: 10, n: 30, b: 30, r: 50, q: 90, k: 200 };
+const piece_values = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 20 };
 
 const position_valuesW = {
 	p: pawnVW,
@@ -244,7 +245,7 @@ function evaluate(position) {
 				pawnLastMove = false;
 			}
 
-			eval += getPieceValue(currentSquare, i, j); // why is this here
+			eval += getPieceValue(currentSquare, i, j);
 			// returns peice (square, type and colour) and  x and y coords
 		}
 	}
@@ -271,15 +272,17 @@ function isolated(last, scndLast, current, color) {
 }
 
 function getPieceValue(peice, x, y) {
-	let peiceV = piece_values[peice.type]; //.tostring ??? no
+	let peiceV = piece_values[peice.type];
 
 	let positionV;
 	if (peice.color == "w") {
-		positionV = position_valuesW[peice.type];
+		positionV = position_valuesW[peice.type][x][y];
+		// console.log(peiceV, positionV);
 		return positionV + peiceV;
 	} else {
-		positionV = position_valuesB[peice.type];
-		return -positionV + -peiceV;
+		positionV = position_valuesB[peice.type][x][y];
+		// console.log(peiceV, positionV, "black");
+		return -positionV - -peiceV;
 	}
 }
 
@@ -311,7 +314,10 @@ function avengersEndgame(endgameWeight) {
 
 	//maybe add 14 - math.abs...
 
-	return endEval - materialLeft / 2;
+	return endEval - endgameWeight / 2;
 }
+
+// TODO
+// 🟢 get peice value
 
 console.log(evaluate(chess.board()));
