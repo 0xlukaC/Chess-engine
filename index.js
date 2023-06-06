@@ -1,3 +1,10 @@
+// const express = require("express");
+// const app = express();
+
+// app.use(express.static("public")); // uses the public folder for static files
+
+// app.listen(3000);
+
 const { Chess } = require("chess.js");
 const chess = new Chess(); // start the game
 // console.log(chess.board());
@@ -5,12 +12,19 @@ const chess = new Chess(); // start the game
 // minimax
 let bestMove = null;
 function move() {
-	let search = minimax(chess.board(), 3, -Infinity, +Infinity, true);
+	let search = minimax(chess.board(), 3, -Infinity, +Infinity, false);
 	// chess.move(bestMove);
 	console.log(search);
 	console.log(bestMove);
+	chess.move(bestMove);
+	console.log(chess.ascii());
 }
 chess.move("e4");
+
+function opponentMove() {
+	let search = minimax(chess.board(), 3, -Infinity, +Infinity, true);
+	chess.move(bestMove);
+}
 
 function minimax(position, depth, alpha, beta, maximizingPlayer) {
 	if (depth == 0 || chess.isGameOver()) return evaluate(position);
@@ -155,7 +169,18 @@ const position_valuesB = {
 // Evaluation function
 //
 //
+// isolated pawns
+// 1. loop through and pick out pawns
+// 2. record weather the row had a pawn last space (starts off false)
+// 3. check if that was the case if not just continue, if yes, make another variable and have it record another pawn
+// 4. next iteration, if there is no pawn then it is a isolated pawn
+
 //
+
+// passed pawns
+// 1. loop through and pick out pawns
+// 2. add a point to respected column if there is a white pawn or make it a large negative number
+// 4. go through and check if the file was negative or positive and score off that
 
 function evaluate(position) {
 	let eval = 0;
@@ -171,11 +196,6 @@ function evaluate(position) {
 		g: 0,
 		h: 0
 	};
-	// isolated pawns
-	// 1. loop through and pick out pawns
-	// 2. record weather the row had a pawn last space (starts off false)
-	// 3. check if that was the case if not just continue, if yes, make another variable and have it record another pawn
-	// 4. next iteration, if there is no pawn then it is a isolated pawn
 
 	let kingTable = { w: undefined, b: undefined };
 
@@ -189,11 +209,6 @@ function evaluate(position) {
 		g: 0,
 		h: 0
 	};
-
-	// passed pawns
-	// 1. loop through and pick out pawns
-	// 2. add a point to respected column if there is a white pawn or make it a large negative number
-	// 4. go through and check if the file was negative or positive and score off that
 
 	//loop through every peice
 	for (let i = 0; i < 8; i++) {
@@ -210,13 +225,14 @@ function evaluate(position) {
 				continue;
 			}
 
-			materialLeft += piece_values[currentSquare.type];
+			materialLeft += piece_values[currentSquare.type]; //needs fixing
 
 			if (currentSquare.type == "k")
 				kingTable[currentSquare.color] = [currentSquare, [i, j]];
 
 			if (currentSquare.type == "p") {
 				// for doubled and isolated pawns
+
 				eval += isolated(
 					pawnLastMove,
 					pawnThisMove,
@@ -226,13 +242,12 @@ function evaluate(position) {
 				pawnLastMove = pawnThisMove;
 				pawnThisMove = true;
 
-				let row = currentSquare.square[0]; // potentiall error
 				if (currentSquare.color == "w") {
-					doubledTable.row -= 5;
-					passedTable.row += 1;
+					doubledTable[currentSquare.square[0]] -= 5;
+					passedTable[currentSquare.square[0]] += 1;
 				} else {
-					doubledTable.row += 5;
-					passedTable.row += -10;
+					doubledTable[currentSquare.square[0]] += 5;
+					passedTable[currentSquare.square[0]] += -1;
 				}
 			} else {
 				eval += isolated(
@@ -246,18 +261,21 @@ function evaluate(position) {
 			}
 
 			eval += getPieceValue(currentSquare, i, j);
+
 			// returns peice (square, type and colour) and  x and y coords
 		}
 	}
+
 	for (let column in doubledTable) {
 		eval += doubledTable[column];
 	}
 
 	for (let column in passedTable) {
 		if (passedTable[column] < 0) eval += 6;
-		else eval -= 6;
+		else if (passedTable[column] > 0) eval -= 6;
 	}
 
+	// console.log(materialLeft);
 	if (materialLeft <= 15) eval += avengersEndgame(materialLeft);
 
 	return eval;
@@ -268,7 +286,8 @@ function isolated(last, scndLast, current, color) {
 	if (color == "b") {
 		multi = -1;
 	}
-	if (!last && scndLast && !current) return -5 * multi;
+	if (!last && !scndLast && current) return -1 * multi;
+	else return 0;
 }
 
 function getPieceValue(peice, x, y) {
@@ -282,7 +301,7 @@ function getPieceValue(peice, x, y) {
 	} else {
 		positionV = position_valuesB[peice.type][x][y];
 		// console.log(peiceV, positionV, "black");
-		return -positionV - -peiceV;
+		return (positionV + peiceV) * -1;
 	}
 }
 
@@ -317,7 +336,9 @@ function avengersEndgame(endgameWeight) {
 	return endEval - endgameWeight / 2;
 }
 
-// TODO
-// 🟢 get peice value
-
-console.log(evaluate(chess.board()));
+// console.log(evaluate(chess.board()));
+move();
+chess.move("d4");
+move();
+chess.move("Nf3");
+move();
