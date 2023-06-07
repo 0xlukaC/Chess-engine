@@ -1,0 +1,11 @@
+body {
+	background-color: rgb(34, 38, 73);
+}
+
+#title {
+	font-family: "Inter", sans-serif;
+	display: flex;
+	color: white;
+	justify-content: flex-start;
+	margin-left: 3vw;
+}
