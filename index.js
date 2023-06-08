@@ -11,19 +11,10 @@ const chess = new Chess(); // start the game
 
 // minimax
 let bestMove = null;
-function move() {
+function mover() {
 	let search = minimax(chess.board(), 3, -Infinity, +Infinity, false);
-	// chess.move(bestMove);
-	console.log(search);
-	console.log(bestMove);
 	chess.move(bestMove);
-	console.log(chess.ascii());
-}
-chess.move("e4");
-
-function opponentMove() {
-	let search = minimax(chess.board(), 3, -Infinity, +Infinity, true);
-	chess.move(bestMove);
+	return chess.fen();
 }
 
 function minimax(position, depth, alpha, beta, maximizingPlayer) {
@@ -338,3 +329,45 @@ function avengersEndgame(endgameWeight) {
 
 // console.log(evaluate(chess.board()));
 // move();
+
+// import { WebSocketServer } from "ws";
+let { WebSocketServer } = require("ws");
+
+const wss = new WebSocketServer({ port: 3001 });
+
+wss.on("connection", function connection(ws) {
+	ws.on("error", console.error);
+
+	ws.on("message", function message(data) {
+		data = data.toString().split(" ");
+		console.log("data", data);
+
+		// [ 'g1', 'f3', 'Ng1', 'Nf3' ]
+		// [ 'g1', 'f3' ] for pawns
+
+		// check if there is a peice on that square and add "x"
+		if (chess.isGameOver()) return ws.send(0);
+		if (chess.turn == "b") return ws.send(0);
+
+		let legal = false;
+		let possibles = chess.moves({ square: data[0] });
+
+		let checker = data[3];
+		if (data[3] == undefined) checker = data[1];
+
+		// if (chess.get(data[1]).color == "b") {
+
+		// }
+
+		console.log("possibles", possibles);
+		for (let i = 0; i < possibles.length; i++) {
+			console.log("single possible", possibles[i]);
+			if (possibles[i] == checker) legal = true;
+		}
+		if (!legal) return ws.send(0);
+		chess.move(checker);
+		console.log(chess.ascii());
+		ws.send(mover());
+		// check for check or maybe illigal move
+	});
+});
