@@ -20,15 +20,7 @@ function onDrop(source, target, piece) {
 	console.log(source, target, piece);
 	if (target == "offboard") return "snapback";
 
-	piece = piece[1];
-	if (piece != "P") {
-		let source2 = piece + source;
-		let target2 = piece + target;
-
-		socket.send(source + " " + target + " " + source2 + " " + target2);
-	} else {
-		socket.send(source + " " + target);
-	}
+	socket.send(source + " " + target);
 
 	socket.addEventListener("message", (event) => {
 		console.log(event.data);

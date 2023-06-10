@@ -1,5 +1,7 @@
 body {
-	background-color: rgb(34, 38, 73);
+	background-image: url(./background.jpg);
+	background-position: center;
+	/* background-size: cover; */
 }
 
 #title {
@@ -8,4 +10,34 @@ body {
 	color: white;
 	justify-content: flex-start;
 	margin-left: 3vw;
+}
+
+#container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.board-b72b1 {
+	border: 2px solid #ffffff00;
+}
+
+.white-1e1d7 {
+	background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.black-3c85d {
+	background-color: rgba(255, 255, 255, 0) !important
+}
+
+
+.highlight1-32417 {
+	/* box-shadow: none !important; */
+	box-shadow: inset 0px 0px 14px 9px rgba(0, 0, 0, 0.1);
+}
+
+
+.highlight2-9c5d2 {
+	/* box-shadow: none !important; */
+	box-shadow: inset 0px 0px 14px 9px rgba(0, 0, 0, 0.1);
 }

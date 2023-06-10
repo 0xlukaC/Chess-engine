@@ -10,15 +10,33 @@ const chess = new Chess(); // start the game
 // console.log(chess.board());
 
 // minimax
-let bestMove = null;
-function mover() {
-	let search = minimax(chess.board(), 3, -Infinity, +Infinity, false);
-	chess.move(bestMove);
+
+function minimaxRoot(position, depth, maximizingPlayer) {
+	let bestMoveFound;
+	let maxEval = -Infinity;
+
+	for (let i = 0; i < chess.moves().length; i++) {
+		chess.move(chess.moves()[i]);
+		let eval = minimax(
+			position,
+			depth - 1,
+			-Infinity,
+			+Infinity,
+			!maximizingPlayer
+		);
+		chess.undo();
+		if (eval >= maxEval) {
+			maxEval = eval;
+			bestMoveFound = chess.moves()[i];
+		}
+	}
+	chess.move(bestMoveFound);
+	console.log(chess.ascii());
 	return chess.fen();
 }
 
 function minimax(position, depth, alpha, beta, maximizingPlayer) {
-	if (depth == 0 || chess.isGameOver()) return evaluate(position);
+	if (depth == 0 || chess.isGameOver()) return -evaluate(position);
 	// Math.ceil(Math.random() * 99) * (Math.round(Math.random()) ? 1 : -1)
 	if (maximizingPlayer) {
 		let maxEval = -Infinity;
@@ -31,14 +49,12 @@ function minimax(position, depth, alpha, beta, maximizingPlayer) {
 			let bestEval = minimax(child, depth - 1, alpha, beta, false);
 			maxEval = Math.max(maxEval, bestEval);
 
-			if (bestEval == maxEval) currentBestMove = chess.moves()[i];
 			chess.undo();
 
 			alpha = Math.max(alpha, bestEval);
 			if (beta <= alpha) break;
 		}
 
-		bestMove = currentBestMove;
 		return maxEval;
 	} else {
 		let minEval = +Infinity;
@@ -138,7 +154,7 @@ const kingVW = [
 
 const kingVB = reverseArray(kingVW);
 
-const piece_values = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 20 };
+const piece_values = { p: 5, n: 8, b: 8, r: 10, q: 14, k: 24 };
 
 const position_valuesW = {
 	p: pawnVW,
@@ -172,6 +188,8 @@ const position_valuesB = {
 // 1. loop through and pick out pawns
 // 2. add a point to respected column if there is a white pawn or make it a large negative number
 // 4. go through and check if the file was negative or positive and score off that
+
+let endgame = false; // use for dissmissing the heat maps
 
 function evaluate(position) {
 	let eval = 0;
@@ -216,10 +234,15 @@ function evaluate(position) {
 				continue;
 			}
 
-			materialLeft += piece_values[currentSquare.type]; //needs fixing
+			materialLeft += piece_values[currentSquare.type];
 
-			if (currentSquare.type == "k")
-				kingTable[currentSquare.color] = [currentSquare, [i, j]];
+			if (currentSquare.type == "k") {
+				kingTable[currentSquare.color] = [
+					currentSquare,
+					[i + 1, j + 1]
+				];
+				materialLeft -= 20;
+			}
 
 			if (currentSquare.type == "p") {
 				// for doubled and isolated pawns
@@ -234,10 +257,10 @@ function evaluate(position) {
 				pawnThisMove = true;
 
 				if (currentSquare.color == "w") {
-					doubledTable[currentSquare.square[0]] -= 5;
+					doubledTable[currentSquare.square[0]] -= 2;
 					passedTable[currentSquare.square[0]] += 1;
 				} else {
-					doubledTable[currentSquare.square[0]] += 5;
+					doubledTable[currentSquare.square[0]] += 2;
 					passedTable[currentSquare.square[0]] += -1;
 				}
 			} else {
@@ -251,23 +274,29 @@ function evaluate(position) {
 				pawnLastMove = false;
 			}
 
-			eval += getPieceValue(currentSquare, i, j);
-
+			eval += getPieceValue(currentSquare, i, j, materialLeft);
+			// console.log(" peice values", getPieceValue(currentSquare, i, j));
 			// returns peice (square, type and colour) and  x and y coords
 		}
 	}
 
 	for (let column in doubledTable) {
 		eval += doubledTable[column];
+		// console.log("doubled", doubledTable[column]);
 	}
 
 	for (let column in passedTable) {
-		if (passedTable[column] < 0) eval += 6;
-		else if (passedTable[column] > 0) eval -= 6;
+		// console.log("passed", passedTable[column]);
+		if (passedTable[column] < 0) eval += 3;
+		else if (passedTable[column] > 0) eval -= 3;
 	}
 
-	// console.log(materialLeft);
-	if (materialLeft <= 15) eval += avengersEndgame(materialLeft);
+	if (materialLeft <= 70) {
+		eval += avengersEndgame(materialLeft, kingTable);
+		endgame = true;
+	}
+
+	if (chess.isCheckmate()) eval += -Infinity;
 
 	return eval;
 }
@@ -277,60 +306,50 @@ function isolated(last, scndLast, current, color) {
 	if (color == "b") {
 		multi = -1;
 	}
-	if (!last && !scndLast && current) return -1 * multi;
+	if (!last && !scndLast && current) return -0.5 * multi; // might need to fix
 	else return 0;
 }
 
-function getPieceValue(peice, x, y) {
+function getPieceValue(peice, x, y, endmats, kingTable) {
 	let peiceV = piece_values[peice.type];
 
 	let positionV;
 	if (peice.color == "w") {
+		if (peice.type == "k" || (peice.type == "q" && endgame)) return peiceV;
 		positionV = position_valuesW[peice.type][x][y];
-		// console.log(peiceV, positionV);
 		return positionV + peiceV;
 	} else {
+		if (peice.type == "k" || (peice.type == "q" && endgame)) return -peiceV;
 		positionV = position_valuesB[peice.type][x][y];
-		// console.log(peiceV, positionV, "black");
 		return (positionV + peiceV) * -1;
 	}
 }
 
-function avengersEndgame(endgameWeight) {
+function avengersEndgame(endgameWeight, kingTable) {
 	// endgame specific eval
 	if (!kingTable.w || !kingTable.b) return 0;
 	let endEval = 0;
-
 	// favour positions where opponent king has been forced away from the center (to the edge of the board)
 	// making it easier to deliver checkmate
-	let blackKingRank = kingTable.b[1][0];
+	let blackKingRank = 9 - kingTable.b[1][0];
 	let blackKingFile = kingTable.b[1][1];
 
 	let whiteKingRank = kingTable.w[1][0];
-	let whiteKingFile = kingTable.w[1][1];
-
-	endEval +=
-		Math.max(3 - blackKingRank, blackKingFile - 4) +
-		Math.max(3 - blackKingRank, blackKingRank - 4);
+	let whiteKingFile = 9 - kingTable.w[1][1];
 
 	endEval -=
 		Math.max(3 - whiteKingFile, whiteKingFile - 4) +
 		Math.max(3 - whiteKingRank, whiteKingRank - 4);
 
 	// incentivize moving the king closer to opponent king to cut off escape and assist with checkmate
-	endEval +=
-		Math.abs(whiteKingFile - blackKingFile) +
-		Math.abs(whiteKingRank - blackKingRank);
+	let distFile = Math.abs(blackKingFile - whiteKingFile);
+	let distRank = Math.abs(blackKingRank - whiteKingRank);
+	endEval -= distFile * distRank;
 
-	//maybe add 14 - math.abs...
-
-	return endEval - endgameWeight / 2;
+	return endEval;
+	// return Math.ceil(endEval - endgameWeight / 2);
 }
 
-// console.log(evaluate(chess.board()));
-// move();
-
-// import { WebSocketServer } from "ws";
 let { WebSocketServer } = require("ws");
 
 const wss = new WebSocketServer({ port: 3001 });
@@ -338,36 +357,30 @@ const wss = new WebSocketServer({ port: 3001 });
 wss.on("connection", function connection(ws) {
 	ws.on("error", console.error);
 
+	ws.send(chess.fen());
+
 	ws.on("message", function message(data) {
 		data = data.toString().split(" ");
-		console.log("data", data);
+		// console.log("data", data);
 
-		// [ 'g1', 'f3', 'Ng1', 'Nf3' ]
-		// [ 'g1', 'f3' ] for pawns
+		// [ 'g1', 'f3' ]
 
-		// check if there is a peice on that square and add "x"
 		if (chess.isGameOver()) return ws.send(0);
 		if (chess.turn == "b") return ws.send(0);
 
-		let legal = false;
-		let possibles = chess.moves({ square: data[0] });
+		let selected = {
+			from: data[0], // Starting square
+			to: data[1], // Ending square
+			promotion: "q" // Promotion piece (optional)
+		};
 
-		let checker = data[3];
-		if (data[3] == undefined) checker = data[1];
-
-		// if (chess.get(data[1]).color == "b") {
-
-		// }
-
-		console.log("possibles", possibles);
-		for (let i = 0; i < possibles.length; i++) {
-			console.log("single possible", possibles[i]);
-			if (possibles[i] == checker) legal = true;
+		try {
+			chess.move(selected);
+		} catch (error) {
+			return ws.send(0);
 		}
-		if (!legal) return ws.send(0);
-		chess.move(checker);
-		console.log(chess.ascii());
-		ws.send(mover());
+		// console.log(chess.ascii());
+		ws.send(minimaxRoot(chess.board(), 3, true));
 		// check for check or maybe illigal move
 	});
 });
